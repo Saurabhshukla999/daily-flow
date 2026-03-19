@@ -14,7 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      daily_logs: {
+        Row: {
+          checked: boolean | null
+          created_at: string | null
+          date: string
+          hours_logged: number | null
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          checked?: boolean | null
+          created_at?: string | null
+          date: string
+          hours_logged?: number | null
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          checked?: boolean | null
+          created_at?: string | null
+          date?: string
+          hours_logged?: number | null
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string | null
+          days: number[] | null
+          hours_per_day: number | null
+          id: string
+          is_active: boolean | null
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          days?: number[] | null
+          hours_per_day?: number | null
+          id?: string
+          is_active?: boolean | null
+          text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          days?: number[] | null
+          hours_per_day?: number | null
+          id?: string
+          is_active?: boolean | null
+          text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
