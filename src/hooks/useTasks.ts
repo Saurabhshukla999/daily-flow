@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { TaskWithEndDate } from '@/types/task';
 
 export function useTasks() {
   const { user } = useAuth();
@@ -21,10 +22,24 @@ export function useTasks() {
   });
 
   const addTask = useMutation({
-    mutationFn: async (task: { text: string; hours_per_day: number; days: number[] }) => {
+    mutationFn: async (task: { text: string; hours_per_day: number; days: number[]; end_date?: string }) => {
       const { data, error } = await supabase
         .from('tasks')
         .insert({ ...task, user_id: user!.id })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+
+  const updateTask = useMutation({
+    mutationFn: async ({ taskId, updates }: { taskId: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', taskId)
         .select()
         .single();
       if (error) throw error;
@@ -44,5 +59,5 @@ export function useTasks() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['tasks'] }),
   });
 
-  return { tasks: tasksQuery.data ?? [], isLoading: tasksQuery.isLoading, addTask, deleteTask };
+  return { tasks: (tasksQuery.data ?? []) as TaskWithEndDate[], isLoading: tasksQuery.isLoading, addTask, updateTask, deleteTask };
 }

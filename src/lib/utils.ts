@@ -22,6 +22,11 @@ export function isTaskScheduledForDay(days: number[], dayOfWeek: number): boolea
   return days.includes(dayOfWeek);
 }
 
+export function isTaskActive(endDate?: string): boolean {
+  if (!endDate) return true; // No end date means task is ongoing
+  return new Date(endDate) >= new Date(); // Task is active if end date is today or in the future
+}
+
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;

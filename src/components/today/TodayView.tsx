@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useLogs } from '@/hooks/useLogs';
 import { useStats } from '@/hooks/useStats';
-import { getTodayStr, getDayOfWeek, isTaskScheduledForDay, getMotivationalMessage } from '@/lib/utils';
+import { getTodayStr, getDayOfWeek, isTaskScheduledForDay, isTaskActive, getMotivationalMessage } from '@/lib/utils';
 import ProgressRing from './ProgressRing';
 import StatCards from './StatCards';
 import TaskItem from './TaskItem';
@@ -29,7 +29,10 @@ export default function TodayView() {
   }, [todayStr]);
 
   const dayOfWeek = getDayOfWeek();
-  const todayTasks = tasks.filter(t => isTaskScheduledForDay(t.days ?? [], dayOfWeek));
+  const todayTasks = tasks.filter(t => 
+    isTaskScheduledForDay(t.days ?? [], dayOfWeek) && 
+    isTaskActive(t.end_date)
+  );
 
   const logsMap = new Map(logs.map(l => [l.task_id, l]));
   const doneCount = todayTasks.filter(t => logsMap.get(t.id)?.checked).length;
