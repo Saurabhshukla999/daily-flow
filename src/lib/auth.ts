@@ -1,8 +1,5 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export interface User {
   id: string;
@@ -23,24 +20,29 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return bcrypt.compare(password, hashedPassword);
 }
 
-export function generateToken(user: User): string {
-  return jwt.sign(
-    { userId: user.id, email: user.email },
-    JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+export function generateId(): string {
+  return uuidv4();
 }
 
-export function verifyToken(token: string): any {
+// Simple JWT token parsing for client-side (no verification needed as server handles it)
+export function parseToken(token: string): any {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    // JWT tokens are base64 encoded, split into 3 parts
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    // Decode the payload (middle part)
+    const payload = JSON.parse(atob(parts[1]));
+    
+    // Check if token is expired
+    if (payload.exp && payload.exp < Date.now() / 1000) {
+      return null;
+    }
+    
+    return payload;
   } catch (error) {
     return null;
   }
-}
-
-export function generateId(): string {
-  return uuidv4();
 }
 
 export function getCurrentUser(): User | null {
@@ -50,7 +52,7 @@ export function getCurrentUser(): User | null {
   if (!token) return null;
 
   try {
-    const decoded = verifyToken(token);
+    const decoded = parseToken(token);
     if (!decoded) return null;
 
     return {
