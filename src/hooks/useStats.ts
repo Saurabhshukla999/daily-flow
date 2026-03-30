@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { query } from '@/lib/db';
 import { useAuth } from './useAuth';
 import { getDateRange, getDaysInRange, MONTH_NAMES } from '@/lib/utils';
 import type { Stats, HistoryEntry } from '@/lib/types';
@@ -10,22 +10,22 @@ export function useStats(period: 'week' | 'month' | 'year', metric: 'completion'
   return useQuery({
     queryKey: ['stats', user?.id, period, metric],
     queryFn: async (): Promise<Stats> => {
+      if (!user) throw new Error('User not authenticated');
       const { start, end } = getDateRange(period);
 
       // Fetch all logs in range
-      const { data: logs, error } = await supabase
-        .from('daily_logs')
-        .select('*')
-        .gte('date', start)
-        .lte('date', end);
-      if (error) throw error;
+      const logsResult = await query(
+        'SELECT * FROM daily_logs WHERE user_id = $1 AND date >= $2 AND date <= $3',
+        [user.id, start, end]
+      );
+      const logs = logsResult.rows;
 
       // Fetch all active tasks to know total tasks per day
-      const { data: tasks, error: te } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('is_active', true);
-      if (te) throw te;
+      const tasksResult = await query(
+        'SELECT * FROM tasks WHERE user_id = $1 AND is_active = true',
+        [user.id]
+      );
+      const tasks = tasksResult.rows;
 
       const allDates = getDaysInRange(start, end);
 

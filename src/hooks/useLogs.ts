@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { query } from '@/lib/db';
 import { useAuth } from './useAuth';
 
 export function useLogs(date: string) {
@@ -9,28 +9,27 @@ export function useLogs(date: string) {
   const logsQuery = useQuery({
     queryKey: ['logs', user?.id, date],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('daily_logs')
-        .select('*')
-        .eq('date', date);
-      if (error) throw error;
-      return data;
+      if (!user) return [];
+      const result = await query(
+        'SELECT * FROM daily_logs WHERE user_id = $1 AND date = $2',
+        [user.id, date]
+      );
+      return result.rows;
     },
     enabled: !!user,
   });
 
   const upsertLog = useMutation({
     mutationFn: async (log: { task_id: string; date: string; checked?: boolean; hours_logged?: number }) => {
-      const { data, error } = await supabase
-        .from('daily_logs')
-        .upsert(
-          { ...log, user_id: user!.id },
-          { onConflict: 'user_id,task_id,date' }
-        )
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      if (!user) throw new Error('User not authenticated');
+      const result = await query(`
+        INSERT INTO daily_logs (user_id, task_id, date, checked, hours_logged)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (user_id, task_id, date)
+        DO UPDATE SET checked = $4, hours_logged = $5
+        RETURNING *
+      `, [user.id, log.task_id, log.date, log.checked ?? false, log.hours_logged ?? 0]);
+      return result.rows[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['logs'] });
@@ -40,12 +39,8 @@ export function useLogs(date: string) {
 
   const resetChecks = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({ checked: false })
-        .eq('date', date)
-        .eq('user_id', user!.id);
-      if (error) throw error;
+      if (!user) throw new Error('User not authenticated');
+      await query('UPDATE daily_logs SET checked = false WHERE user_id = $1 AND date = $2', [user.id, date]);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['logs'] }),
   });
