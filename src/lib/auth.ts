@@ -1,5 +1,4 @@
-import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+export const AUTH_TOKEN_CHANGED_EVENT = 'auth-token-changed';
 
 export interface User {
   id: string;
@@ -7,32 +6,24 @@ export interface User {
   created_at: Date;
 }
 
-export interface AuthTokens {
-  user: User;
-  token: string;
-}
-
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
-}
-
-export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
-  return bcrypt.compare(password, hashedPassword);
-}
-
-export function generateId(): string {
-  return uuidv4();
+interface TokenPayload {
+  userId?: string;
+  email?: string;
+  exp?: number;
+  created_at?: string;
 }
 
 // Simple JWT token parsing for client-side (no verification needed as server handles it)
-export function parseToken(token: string): any {
+export function parseToken(token: string): TokenPayload | null {
   try {
     // JWT tokens are base64 encoded, split into 3 parts
     const parts = token.split('.');
     if (parts.length !== 3) return null;
     
     // Decode the payload (middle part)
-    const payload = JSON.parse(atob(parts[1]));
+    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded)) as TokenPayload;
     
     // Check if token is expired
     if (payload.exp && payload.exp < Date.now() / 1000) {
@@ -69,11 +60,13 @@ export function getCurrentUser(): User | null {
 export function setAuthToken(token: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem('auth_token', token);
+    window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
   }
 }
 
 export function removeAuthToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('auth_token');
+    window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
   }
 }

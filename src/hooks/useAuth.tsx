@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { User as AuthUser, getCurrentUser, removeAuthToken } from '@/lib/auth';
+import { AUTH_TOKEN_CHANGED_EVENT, User as AuthUser, getCurrentUser, removeAuthToken } from '@/lib/auth';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -25,14 +25,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(currentUser);
     setLoading(false);
 
-    // Listen for storage changes (for multi-tab support)
+    // Listen for auth token changes in this tab and other tabs.
     const handleStorageChange = () => {
       const currentUser = getCurrentUser();
       setUser(currentUser);
     };
 
+    window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, handleStorageChange);
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, handleStorageChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const signOut = async () => {

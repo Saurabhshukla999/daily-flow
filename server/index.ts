@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
@@ -156,6 +157,19 @@ app.get('/api/logs', verifyToken, async (req, res) => {
   }
 });
 
+app.get('/api/logs/range', verifyToken, async (req, res) => {
+  try {
+    const { start, end } = req.query;
+    const result = await pool.query(
+      'SELECT * FROM daily_logs WHERE user_id = $1 AND date >= $2 AND date <= $3',
+      [req.user.userId, start, end]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/logs', verifyToken, async (req, res) => {
   try {
     const { task_id, date, checked, hours_logged } = req.body;
@@ -167,6 +181,19 @@ app.post('/api/logs', verifyToken, async (req, res) => {
       RETURNING *
     `, [req.user.userId, task_id, date, checked, hours_logged]);
     res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/logs/reset', verifyToken, async (req, res) => {
+  try {
+    const { date } = req.body;
+    await pool.query(
+      'UPDATE daily_logs SET checked = false WHERE user_id = $1 AND date = $2',
+      [req.user.userId, date]
+    );
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
